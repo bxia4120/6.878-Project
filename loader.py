@@ -16,10 +16,16 @@ class Loader:
 		for sample_id, sample_info in self.metadata['samples'].items():
 			if sample_info.get('disease', 'absent').lower() in healthy_synonyms:
 				age = self.get_age(sample_info)
-				if age:
-					age_bin = self.get_age_bin(np.mean(age))
-					val = (age, self.get_filename(sample_id))
-					self.table.setdefault(age_bin, []).append(val)
+				if not age:
+					continue
+				age_bin = self.get_age_bin(np.mean(age))
+				f_name_list = self.get_filename(sample_id)
+				if not f_name_list:
+					continue
+				for f_name in f_name_list:
+					val = (age, f_name)
+					if val[1]:
+						self.table.setdefault(age_bin, []).append(val)
 
 	def get_age_bin(self, age, bin_size=5):
 		age_min = age - (age % bin_size)
