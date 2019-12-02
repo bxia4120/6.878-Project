@@ -11,12 +11,21 @@ class Binner:
 		self.num_bins = {}
 		self.offset = {}
 		self.total_n_bins = 0
-		for chrom_name, n_bases in self.chrom_sizes.items():
+		self.chrom_list = sorted(list(self.chrom_sizes.keys()))
+		for chrom_name in self.chrom_list:
+			n_bases = self.chrom_sizes[chrom_name]
 			n_bins = int(np.ceil(n_bases / bin_size))
 			self.offset[chrom_name] = self.total_n_bins
 			self.num_bins[chrom_name] = n_bins
 			self.total_n_bins += n_bins
 
+	def unbin(self, num):
+		for chrom_name in self.chrom_list:
+			ofst = self.offset[chrom_name]
+			if num >= ofst and num < ofst + self.chrom_sizes[chrom_name]:
+				internal_bin = num - ofst
+				return (chrom_name, internal_bin * self.bin_size, (internal_bin + 1) * self.bin_size)
+		return None
 	def get_bin(self, chrom, position):
 		off = position // self.bin_size
 		return self.offset[chrom] + off
