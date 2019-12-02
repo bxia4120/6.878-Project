@@ -6,10 +6,11 @@ class PolyKernel(BaseEstimator, TransformerMixin):
 	def transform(self, pdata):
 		"""pdata is ENTIRE data set NS x NF"""
 		out = []
-		for x in pdata:
-			pk = polynomial_kernel(x.reshape(-1, 1)).flatten()
+		for r_x in pdata:
+			x = r_x * 2
+			pk = polynomial_kernel(x.astype(np.uint8).reshape(-1, 1)).flatten() * 2
 			print("shape:", x.shape, pk.shape)
-			out.append(np.concatenate((x, pk), axis=None))
+			out.append(np.concatenate((x.astype(np.uint8), pk), axis=None))
 		return np.asarray(out)
 
 	def fit(self, data, target):
