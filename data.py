@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import polynomial_kernel
 import os
+import pyBigWig
 
 class Data:
 	def __init__(self, filename=None,
@@ -41,12 +42,12 @@ class Data:
 
 	def append_poly_kernel(self):
 		print("init shape:", self.feature_list.shape)
-		poly_k = polynomial_kernel(self.feature_list)
+		poly_k = polynomial_kernel(self.feature_list[i ,:])
 		print("poly k shape:", poly_k.shape)
 		print("flattened poly k shape:", poly_k.flatten().shape)
 
 	def _get_data(self, bin_size, metadata_file, chrom_sizes):
-		ldr = Loader("metadata.json")
+		ldr = Loader(metadata_file)
 		bnr = Binner(chrom_sizes, bin_size)
 		raw_label_list = []
 		raw_feature_list = []
@@ -59,8 +60,9 @@ class Data:
 					F = bnr.featurize(bw)
 					raw_feature_list.append(F)
 					raw_label_list.append(actual_age_list)
-					file.close()
-				except:
+					bw.close()
+				except Exception as e:
+					print("bad fname:", filename, ":", e)
 					pass
 		avg_label_list = np.asarray([[np.mean(y)] for y in raw_label_list])
 		scaler = MinMaxScaler()
