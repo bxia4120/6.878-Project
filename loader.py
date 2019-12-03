@@ -17,16 +17,18 @@ class Metaloader:
 		for metadata in self.metadata_list:
 			inner_list = set()
 			for sample_key, sample_info in metadata['samples'].items():
-				sample_id = sample_info['donor_id']
-				inner_list.add(sample_id)
+				if 'donor_id' in sample_info:
+					sample_id = sample_info['donor_id']
+					inner_list.add(sample_id)
 			sample_list += list(inner_list)
 		self.loader_list = []
 		for metadata, marker, data_dir in zip(self.metadata_list, marker_list, dir_list):
 			table = {}
 			for sample_key, sample_info in metadata['samples'].items():
-				sample_id = sample_info['donor_id']
-				if sample_list.count(sample_id) == len(self.metadata_list):
-					table[sample_key] = sample_info
+				if 'donor_id' in sample_info:
+					sample_id = sample_info['donor_id']
+					if sample_list.count(sample_id) == len(self.metadata_list):
+						table[sample_key] = sample_info
 			ldr = Loader(marker=marker, data_dir=data_dir, metadata=table)
 			self.loader_list.append(ldr)
 
@@ -74,7 +76,8 @@ class Loader:
 					val = (age, f_name)
 					if val[1]:
 						self.table.setdefault(age_bin, []).append(val)
-						self.dtable.setdefault(sample_info['donor_id'], []).append(val)
+						if 'donor_id' in sample_info:
+							self.dtable.setdefault(sample_info['donor_id'], []).append(val)
 
 	def get_age_bin(self, age, bin_size=5):
 		age_min = age - (age % bin_size)
