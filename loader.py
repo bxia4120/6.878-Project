@@ -4,15 +4,63 @@ import os
 import re
 import numpy as np
 
+class Metaloader:
+	def __init__(self, metadata_file_list, marker_list, dir_list):
+		self.metadata_list = []
+		for f in metadata_file_list:
+			with open(f, 'r') as F:
+				self.metadata_list.append(json.load(F))
+		self.marker_list = marker_list
+		self.dir_list = dir_list
+		healthy_synonyms = set(['none', 'normal', 'healthy', 'presumed_normal'])
+		sample_list = list()
+		for metadata in self.metadata_list:
+			inner_list = set()
+			for sample_key, sample_info in metadata['samples'].items():
+				sample_id = sample_info['donor_id']
+				inner_list.add(sample_id)
+			sample_list += list(inner_list)
+		self.loader_list = []
+		for metadata, marker, data_dir in zip(self.metadata_list, marker_list, dir_list):
+			table = {}
+			for sample_key, sample_info in metadata['samples'].items():
+				sample_id = sample_info['donor_id']
+				if sample_list.count(sample_id) == len(self.metadata_list):
+					table[sample_key] = sample_info
+			ldr = Loader(marker=marker, data_dir=data_dir, metadata=table)
+			self.loader_list.append(ldr)
+
+	def get_data(self):
+		table = {}
+		for ldr, marker in zip(self.loader_list, self.marker_list):
+			for donor_id, val in ldr.dtable.items():
+				# sets each only once
+				table.setdefault(donor_id, {})[marker] = np.mean(val)
+		labels = []
+		data = []
+		for donor_id, marker_table in table.items():
+			age_list = [v[0] for k, v in marker_table.items()]
+			assert np.max(age_list) == np.min(age_list)
+			labels.append(np.mean(age_list))
+			datum = [marker_table[M][1] for M in self.marker_list]
+			data.append(datum)
+		return data, labels
+
 class Loader:
-	def __init__(self, metadata_file, marker='H3K27ac', data_dir="data"):
-		with open(metadata_file, 'r') as F:
-			self.metadata = json.load(F)
+	def __init__(self, metadata_file=None, marker='H3K27ac', data_dir="data", metadata=None):
+		if metadata is not None:
+			self.metadata = metadata
+		elif metadata_file is not None:
+			with open(metadata_file, 'r') as F:
+				self.metadata = json.load(F)
+		else:
+			raise ValueError("must provide metadata or metadata file")
 		self.marker = marker
 		self.data_dir = data_dir
 
 		healthy_synonyms = set(['none', 'normal', 'healthy', 'presumed_normal'])
 		self.table = {}
+		self.dtable = {}
 		for sample_id, sample_info in self.metadata['samples'].items():
 			if sample_info.get('disease', 'absent').lower() in healthy_synonyms:
 				age = self.get_age(sample_info)
@@ -26,6 +74,7 @@ class Loader:
 					val = (age, f_name)
 					if val[1]:
 						self.table.setdefault(age_bin, []).append(val)
+						self.dtable.setdefault(sample_info['donor_id'], []).append(val)
 
 	def get_age_bin(self, age, bin_size=5):
 		age_min = age - (age % bin_size)
