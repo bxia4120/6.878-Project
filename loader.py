@@ -29,7 +29,7 @@ class Metaloader:
 					sample_id = sample_info['donor_id']
 					if sample_list.count(sample_id) == len(self.metadata_list):
 						table[sample_key] = sample_info
-			ldr = Loader(marker=marker, data_dir=data_dir, metadata=table)
+			ldr = Loader(marker=marker, data_dir=data_dir, metadata={"samples": table, "datasets": metadata["datasets"]})
 			self.loader_list.append(ldr)
 
 	def get_data(self):
@@ -37,10 +37,12 @@ class Metaloader:
 		for ldr, marker in zip(self.loader_list, self.marker_list):
 			for donor_id, val in ldr.dtable.items():
 				# sets each only once
-				table.setdefault(donor_id, {})[marker] = np.mean(val)
+				table.setdefault(donor_id, {})[marker] = val
 		labels = []
 		data = []
 		for donor_id, marker_table in table.items():
+			if len(marker_table) != len(self.marker_list):
+				print("error", donor_id, marker_table)
 			age_list = [v[0] for k, v in marker_table.items()]
 			assert np.max(age_list) == np.min(age_list)
 			labels.append(np.mean(age_list))
@@ -77,7 +79,7 @@ class Loader:
 					if val[1]:
 						self.table.setdefault(age_bin, []).append(val)
 						if 'donor_id' in sample_info:
-							self.dtable.setdefault(sample_info['donor_id'], []).append(val)
+							self.dtable[sample_info['donor_id']] = (np.mean(val[0]), val[1])
 
 	def get_age_bin(self, age, bin_size=5):
 		age_min = age - (age % bin_size)

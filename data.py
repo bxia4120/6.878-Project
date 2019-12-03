@@ -75,7 +75,6 @@ class Data:
 		z_feature_list = np.asarray(data)
 		return z_feature_list, labels, scaler
 
-		return self.post(np.asarray(data), np.asarray(labels))
 	def _get_data(self, bin_size, metadata_file, chrom_sizes):
 		ldr = Loader(metadata_file)
 		bnr = Binner(chrom_sizes, bin_size)
