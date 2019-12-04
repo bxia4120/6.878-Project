@@ -33,7 +33,8 @@ class Binner:
 	def featurize(self, opened_file, keep=lambda x: True):
 		arr = np.zeros((self.total_n_bins, ))
 		for chrom, chrom_len in self.chrom_sizes.items():
-			entries = opened_file.entries(chrom, 0, chrom_len)
+			m_len = min(chrom_len, opened_file.chroms()[chrom])
+			entries = opened_file.entries(chrom, 0, m_len)
 			if not entries:
 				continue
 			for peak in entries:

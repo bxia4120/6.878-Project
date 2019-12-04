@@ -1,5 +1,5 @@
 import pickle
-from loader import Loader, Metaloader
+from loader import Loader
 from bin import Binner
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -10,7 +10,7 @@ import pyBigWig
 class Data:
 	def __init__(self, filename=None,
 				 bin_size=10000, metadata_file='metadata.json', # or {h3k27ac: ac_metadata.json, ...}
-				 chrom_sizes=None):
+				 chrom_sizes=None, marker_list=['H3K27ac', 'H3K27me3']):
 		if filename:
 			with open(filename, 'rb') as P:
 				data = pickle.load(P)
@@ -19,85 +19,55 @@ class Data:
 				self.scaler = data['scaler']
 				self.chrom_sizes = data['chrom_sizes']
 				self.bin_size = data['bin_size']
-				self.indices = data['indices']
 		elif type(metadata_file) is str:
 			if not chrom_sizes or type(chrom_sizes) is not dict:
 				raise ValueError("chrom size table not passed")
 			if not os.path.isfile(metadata_file):
 				raise ValueError("%s is not a file" % metadata_file)
-			self.indices, self.feature_list, self.label_list, self.scaler = self._get_data(bin_size, metadata_file, chrom_sizes)
+			self.feature_list, self.label_list, self.scaler = self._get_data(bin_size, metadata_file, marker_list, chrom_sizes)
 			self.chrom_sizes = chrom_sizes
 			self.bin_size = bin_size
-		elif type(metadata_file) is dict:
-			if not chrom_sizes or type(chrom_sizes) is not dict:
-				raise ValueError("chrom size table not passed")
-			self.feature_list, self.label_list, self.scaler = self._get_meta_data(bin_size, metadata_file, chrom_sizes)
-			self.chrom_sizes = chrom_sizes
-			self.bin_size = bin_size
-			self.indices = list(range(len(self.feature_list)))
-
+		else:
+			raise ValueError("Must provide pickle file or metadata file and marker list")
 	def dump(self, filename):
 		tbl = {"features": self.feature_list,
 			   "labels": self.label_list,
 			   "scaler": self.scaler,
 			   "chrom_sizes": self.chrom_sizes,
-			   "indices": self.indices,
 			   "bin_size": self.bin_size
 		}
 		with open(filename, 'wb') as P:
 			pickle.dump(tbl, P)
 
-	def _get_meta_data(self, bin_size, metadata_marker2file_dict, chrom_sizes):
-		marker_list = sorted(list(metadata_marker2file_dict.keys()))
-		metafile_list = [metadata_marker2file_dict[M] for M in marker_list]
-		dir_list = ["Blood/%s/data" % M for M in marker_list]
-		ldr = Metaloader(metafile_list, marker_list, dir_list)
-		bnr = Binner(chrom_sizes, bin_size)
-		file_data, raw_labels = ldr.get_data()
-		data = []
-		for f_list in file_data:
-			# in same order as marker_list, passed to Metaloader
-			datum = []
-			for f in f_list:
-				try:
-					bw = pyBigWig.open(f)
-					F = bnr.featurize(bw)
-					datum.append(F)
-					bw.close()
-				except Exception as e:
-					print("bad fname:", f, ":", e)
-					pass
-			data.append(np.asarray(datum))
-		avg_label_list = [[x] for x in raw_labels]
-		scaler = MinMaxScaler()
-		scaler.fit(avg_label_list)
-		labels = scaler.transform(avg_label_list)
-		z_feature_list = np.asarray(data)
-		return z_feature_list, labels, scaler
-
-	def _get_data(self, bin_size, metadata_file, chrom_sizes):
-		ldr = Loader(metadata_file)
+	def _get_data(self, bin_size, metadata_file, marker_list, chrom_sizes):
+		ldr = Loader(metadata_file, marker_list)
 		bnr = Binner(chrom_sizes, bin_size)
 		raw_label_list = []
 		raw_feature_list = []
 		for label, v_list in ldr.table.items():
 			print("label:", label, len(v_list[0]))
-			for (actual_age_list, filename) in v_list:
-				print("fname:", filename)
-				try:
-					bw = pyBigWig.open(filename)
-					F = bnr.featurize(bw)
-					raw_feature_list.append(F)
+			for (actual_age_list, filename_dict) in v_list:
+				datum = []
+				for marker in marker_list:
+					file_list = filename_dict[marker]
+					filename = file_list[0]	 # TODO: can we use multiple?
+					print("fname:", filename)
+					try:
+						bw = pyBigWig.open(filename)
+						F = bnr.featurize(bw)
+						bw.close()
+						datum.append(F)
+					except Exception as e:
+						print("bad fname:", filename, ":", e)
+						pass
+				if len(datum) == len(marker_list):
+					raw_feature_list.append(datum)
 					raw_label_list.append(actual_age_list)
-					bw.close()
-				except Exception as e:
-					print("bad fname:", filename, ":", e)
-					pass
 		avg_label_list = np.asarray([[np.mean(y)] for y in raw_label_list])
 		scaler = MinMaxScaler()
 		scaler.fit(avg_label_list)
 		labels = scaler.transform(avg_label_list)
 		z_feature_list = np.asarray(raw_feature_list)
-		nz_feature_list = np.nonzero(z_feature_list)
-		indices = sorted(list(set(nz_feature_list[1:])))
-		return indices, z_feature_list[:, indices], labels, scaler
+		# nz_feature_list = np.nonzero(z_feature_list)
+		# indices = sorted(list(set(nz_feature_list[1:])))
+		return z_feature_list, labels, scaler

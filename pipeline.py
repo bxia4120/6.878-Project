@@ -10,15 +10,24 @@ from sklearn.preprocessing import PolynomialFeatures
 
 from data import Data
 from kernel import PolyKernel, Unscaler
+import numpy as np
+
 np.seterr(divide='ignore', invalid='ignore')
 
+def reshape_data(model_data, op=np.add):
+	n_markers = model_data.shape[1]
+	return op(*[model_data[:, i, :] for i in range(n_markers)])
+
+
 def run(model_data, crossval=5, n_feat=10):
+	print("Data:", model_data.feature_list.shape)
+	print("Labels:", model_data.label_list.flatten().shape)
 	model = Pipeline([
 		("feat_select", SelectKBest(f_regression, k=n_feat)),
 #		("poly_kernel", PolynomialFeatures(degree=2)),
 		("regressor", LinearRegression())
 	])
-	scores = cross_val_score(model, model_data.feature_list,
+	scores = cross_val_score(model, reshape_data(model_data.feature_list),
 							 model_data.label_list.flatten(), cv=crossval,
 							 n_jobs=1,
 							 scoring=Unscaler(model_data.scaler).scorer)
@@ -36,6 +45,8 @@ if __name__ == "__main__":
 		data = Data(sys.argv[1])
 	else:
 		bin_size = int(sys.argv[1])
-		data = Data(bin_size=bin_size, chrom_sizes={"chr1": 249250621})#, "chr10": 135534747, "chr11": 135006516, "chr12": 133851895, "chr13": 115169878, "chr14": 107349540, "chr15": 102531392, "chr16": 90354753, "chr17": 81195210, "chr18": 78077248, "chr19": 59128983, "chr2": 243199373, "chr20": 63025520, "chr21": 48129895, "chr22": 51304566, "chr3": 198022430, "chr4": 191154276, "chr5": 180915260, "chr6": 171115067, "chr7": 159138663, "chr8": 146364022, "chr9": 141213431, "chrX": 155270560, "chrY": 59373566})#{"chr2": 243199373})
+		data = Data(bin_size=bin_size,
+					marker_list=['H3K27ac', 'H3K27me3'],
+					chrom_sizes={"chr1": 249250621, "chr10": 135534747, "chr11": 135006516, "chr12": 133851895, "chr13": 115169878, "chr14": 107349540, "chr15": 102531392, "chr16": 90354753, "chr17": 81195210, "chr18": 78077248, "chr19": 59128983, "chr2": 243199373, "chr20": 63025520, "chr21": 48129895, "chr22": 51304566, "chr3": 198022430, "chr4": 191154276, "chr5": 180915260, "chr6": 171115067, "chr7": 159138663, "chr8": 146364022, "chr9": 141213431, "chrX": 155270560})#{"chr2": 243199373})
 		data.dump("data.pickle")
 	run(data)
