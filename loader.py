@@ -16,6 +16,7 @@ class Loader:
 		for sample_id, sample_info in self.metadata['samples'].items():
 			if sample_info.get('disease', 'absent').lower() in healthy_synonyms:
 				self.add_sample(sample_id, sample_info)
+
 	def add_sample(self, sample_id, sample_info):
 		age = self.get_age(sample_info)
 		if not age:
@@ -69,6 +70,7 @@ class Loader:
 			bname = os.path.basename(sample_data['big_data_url'])
 			full_name = os.path.join(data_dir, bname)
 			if not os.path.exists(full_name):
-				os.system('wget ' + sample_data['big_data_url'] + ' --no-check-certificate -P %s' % data_dir)
-			out.append(full_name)
+				os.system('wget \'' + sample_data['big_data_url'] + '\' --no-check-certificate -P %s' % data_dir)
+			if os.path.isfile(full_name):
+				out.append(full_name)
 		return out

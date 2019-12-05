@@ -8,9 +8,9 @@ import os
 import pyBigWig
 
 class Data:
-	def __init__(self, filename=None,
+	def __init__(self, marker_list, filename=None,
 				 bin_size=10000, metadata_file='metadata.json', # or {h3k27ac: ac_metadata.json, ...}
-				 chrom_sizes=None, marker_list=['H3K27ac', 'H3K27me3']):
+				 chrom_sizes=None):
 		if filename:
 			with open(filename, 'rb') as P:
 				data = pickle.load(P)
@@ -44,9 +44,14 @@ class Data:
 		bnr = Binner(chrom_sizes, bin_size)
 		raw_label_list = []
 		raw_feature_list = []
+		label_list = sorted([len(v_list) for lab, v_list in ldr.table.items()])
+		print("label list:", label_list)
+		min_val = label_list[len(label_list) * 4 // 5] # bottom 80%
+
+		print("min=", min_val)
 		for label, v_list in ldr.table.items():
-			print("label:", label, len(v_list[0]))
-			for (actual_age_list, filename_dict) in v_list:
+			print("label:", label, len(v_list))
+			for (actual_age_list, filename_dict) in v_list[:min(len(v_list), min_val)]:
 				datum = []
 				for marker in marker_list:
 					file_list = filename_dict[marker]
@@ -64,6 +69,7 @@ class Data:
 					raw_feature_list.append(datum)
 					raw_label_list.append(actual_age_list)
 		avg_label_list = np.asarray([[np.mean(y)] for y in raw_label_list])
+		print(avg_label_list.flatten())
 		scaler = MinMaxScaler()
 		scaler.fit(avg_label_list)
 		labels = scaler.transform(avg_label_list)
