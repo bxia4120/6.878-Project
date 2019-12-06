@@ -47,8 +47,8 @@ class Data:
 		raw_feature_list = []
 		label_list = sorted([len(v_list) for lab, v_list in ldr.table.items()])
 		print("label list:", label_list)
-		min_val = label_list[len(label_list) * 3 // 5] # bottom 80%
-
+		#min_val = label_list[len(label_list) * 3 // 5] # bottom 80%
+		min_val = min(label_list) # don't limit
 		print("min=", min_val)
 		for label, v_list in ldr.table.items():
 			print("label:", label, len(v_list))

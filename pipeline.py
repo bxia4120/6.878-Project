@@ -2,7 +2,7 @@
 import sys, os
 import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.linear_model import ElasticNet, LinearRegression, SGDRegressor
+from sklearn.linear_model import ElasticNet, LinearRegression, SGDRegressor, LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectKBest, f_regression
 from sklearn.decomposition import PCA
@@ -22,18 +22,31 @@ def reshape_data(model_data, op=np.add):
 	return op(*[model_data[:, i, :] for i in range(n_markers)])
 
 
-def run(model_data, crossval=10, n_feat=1000):
+def run(model_data, crossval=10, n_feat=1000, classification=True):
 	print("Data:", model_data.feature_list.shape)
 	print("Labels:", model_data.label_list.flatten().shape)
-	model = Pipeline([
+	Lab = model_data.label_list.flatten()
+	if classification:
+		Lab[Lab >= 0.5] = 1
+		Lab[Lab <  0.5] = 0
+		scorer = None
+		model = Pipeline([
+#		("feat_select", SelectKBest(f_regression, k=n_feat)),
+#		("poly_kernel", PolynomialFeatures(degree=2)),
+		("classifier", LogisticRegression())])
+
+	else:
+		scorer = Unscaler(model_data.scaler).scorer
+		model = Pipeline([
 #		("feat_select", SelectKBest(f_regression, k=n_feat)),
 #		("poly_kernel", PolynomialFeatures(degree=2)),
 		("regressor", LinearRegression())
-	])
+#	print(model_data.label_list.flatten())
+		])
 	scores = cross_val_score(model, reshape_data(model_data.feature_list),
-							 model_data.label_list.flatten(), cv=crossval,
+							 Lab, cv=crossval,
 							 n_jobs=1,
-							 scoring=Unscaler(model_data.scaler).scorer)
+							 scoring=scorer)
 	out = np.asarray(scores)
 	print("all mae:", np.abs(out))
 	print("mae: %.2f +/- %.2f" % (np.abs(np.mean(out)), np.std(out)))
