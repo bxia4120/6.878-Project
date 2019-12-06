@@ -34,6 +34,10 @@ class Loader:
 	def balance(self):
 		age_bins = {k: len(v) for k, v in self.table.items()}
 		print(age_bins)
+	def _age_bin(age, bin_size=5):
+		age_min = age - (age % bin_size)
+		age_max = age_min + bin_size - 1
+		return (age_min, age_max)
 
 	def get_age_bin(self, age):
 		age_min = age - (age % self.bin_size)

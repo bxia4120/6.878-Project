@@ -10,8 +10,10 @@ import gzip
 
 class Data:
 	def __init__(self, marker_list=None, filename=None,
+				 balance=np.max,
 				 bin_size=10000, metadata_file='metadata.json', # or {h3k27ac: ac_metadata.json, ...}
 				 chrom_sizes=None):
+		self.balance = balance
 		if filename:
 			with open(filename, 'rb') as P:
 				data = pickle.load(P)
@@ -20,6 +22,8 @@ class Data:
 				self.scaler = data['scaler']
 				self.chrom_sizes = data['chrom_sizes']
 				self.bin_size = data['bin_size']
+			self.balance_labels()
+
 		elif type(metadata_file) is str:
 			if not chrom_sizes or type(chrom_sizes) is not dict:
 				raise ValueError("chrom size table not passed")
@@ -32,13 +36,29 @@ class Data:
 			raise ValueError("Must provide pickle file or metadata file and marker list")
 	def dump(self, filename):
 		tbl = {"features": self.feature_list,
-			   "labels": self.label_list,
+ppp			   "labels": self.label_list,
 			   "scaler": self.scaler,
 			   "chrom_sizes": self.chrom_sizes,
 			   "bin_size": self.bin_size
 		}
 		with open(filename, 'wb') as P:
 			pickle.dump(tbl, P)
+
+	def balance_labels(self):
+		bins = [Loader._age_bin(age) for age in self.scaler.inverse_transform(self.label_list).flatten()]
+		bin_counts = {b: 0 for b in set(bins)}
+		bal_counts = {b: 0 for b in set(bins)}
+		for b in bins:
+			bin_counts[b] += 1
+		cnt = self.balance(bin_counts.values())
+
+		indices = []
+		for i, b in enumerate(bins):
+			if bal_counts[b] < cnt:
+				bal_counts[b] += 1
+				indices.append(i)
+		self.label_list = self.label_list[indices,]
+		self.feature_list = self.feature_list[indices,]
 
 	def _get_data(self, bin_size, metadata_file, marker_list, chrom_sizes):
 		ldr = Loader(metadata_file, marker_list)
@@ -48,7 +68,7 @@ class Data:
 		label_list = sorted([len(v_list) for lab, v_list in ldr.table.items()])
 		print("label list:", label_list)
 		#min_val = label_list[len(label_list) * 3 // 5] # bottom 80%
-		min_val = min(label_list) # don't limit
+		min_val = self.balance(label_list) # don't limit
 		print("min=", min_val)
 		for label, v_list in ldr.table.items():
 			print("label:", label, len(v_list))

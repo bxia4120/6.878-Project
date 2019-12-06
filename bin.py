@@ -69,7 +69,6 @@ class Binner:
 						arr[i] += 1 / len(range(bin_begin, bin_end + 1))
 		return arr
 
-
 if __name__ == "__main__":
 	chrom_sizes = json.load(open('chrom_sizes.json'))
 	bnr = Binner({'chr2': 100000}, 10000)
