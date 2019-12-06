@@ -36,7 +36,7 @@ class Data:
 			raise ValueError("Must provide pickle file or metadata file and marker list")
 	def dump(self, filename):
 		tbl = {"features": self.feature_list,
-ppp			   "labels": self.label_list,
+			   "labels": self.label_list,
 			   "scaler": self.scaler,
 			   "chrom_sizes": self.chrom_sizes,
 			   "bin_size": self.bin_size
@@ -50,7 +50,7 @@ ppp			   "labels": self.label_list,
 		bal_counts = {b: 0 for b in set(bins)}
 		for b in bins:
 			bin_counts[b] += 1
-		cnt = self.balance(bin_counts.values())
+		cnt = self.balance(list(bin_counts.values()))
 
 		indices = []
 		for i, b in enumerate(bins):

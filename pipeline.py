@@ -31,18 +31,23 @@ def run(model_data, crossval=10, n_feat=1000, mode="r"):
 	if mode == "c":
 		Lab[Lab >= 0.5] = 1
 		Lab[Lab <  0.5] = 0
-		scorer = None
+		scorer = Unscaler(model_data.scaler,
+						  get_weights(lambda x: x.named_steps['classifer'].coef).cscaler
+		)
 		if n_feat > 0:
 			mod_list.append(("feat_select", SelectKBest(f_classif, k=n_feat)))
 		mod_list.append(("classifier", LogisticRegression()))
 	elif mode == "r":
-		scorer = Unscaler(model_data.scaler).rscorer
+		scorer = Unscaler(model_data.scaler,
+						  get_weights=lambda x: x.named_steps['multiclass'].coef_).rscorer
 		if n_feat > 0:
 			mod_list.append(("feat_select", SelectKBest(f_regression, k=n_feat)))
 		mod_list.append(("regressor", LinearRegression()))
 	elif mode == 'm':
 		Lab, onehot_labels = Unscaler(model_data.scaler).multiclass_onehot(model_data.label_list)
-		scorer = Unscaler(model_data.scaler, data=onehot_labels).mscorer
+		scorer = Unscaler(model_data.scaler,
+						  get_weights=lambda x: x.named_steps['multiclass'].coef_n,
+						  data=onehot_labels).mscorer
 		if n_feat > 0:
 			mod_list.append(("feat_select", SelectKBest(f_regression, k=n_feat)))
 		mod_list.append(("multiclass", LogisticRegression()))
@@ -68,10 +73,12 @@ if __name__ == "__main__":
 	if args['pickle']:
 		data = Data(filename=args['pickle'],
 					chrom_sizes=chrom_sizes,
+					metadata_file=args['json'],
 					balance=args['balance'])
 	else:
 		data = Data(bin_size=10000,
 					chrom_sizes=chrom_sizes,
+					metadata_file=args['json'],
 					balance=args['balance'],
 					marker_list=args['marker'])
 		data.dump("data.pickle")

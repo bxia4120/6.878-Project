@@ -25,6 +25,10 @@ def dump_weights(coef_list, filename):
 	with open(filename, 'w') as F:
 		for p in coef_list:
 			print(p, file=F)
+def dump_feat(kbest, filename):
+	with open(filename, 'w') as F:
+		for s in kbest.get_support(True):
+			print(s, file=F)
 
 class Unscaler(BaseEstimator, TransformerMixin):
 	def __init__(self, scaler, data=None, get_weights=lambda x: x.coef_):
@@ -36,29 +40,50 @@ class Unscaler(BaseEstimator, TransformerMixin):
 		return self
 	def transform(self, data):
 		return self.scaler.inverse_transform(data)
+
 	def cscorer(self, estimator, X, y):
 		pred_y = estimator.predict(X)
 		pred_y[pred_y >= 0.5] = 1
 		pred_y[pred_y < 0.5] = 0
 		dump_prediction(pred_y.flatten(), y.flatten(), filename="out%d.txt" % self.counter)
 		dump_weights(self.get_weights(estimator), filename="weights%d.txt" % self.counter)
+		if 'feat_select' in estimator.named_steps:
+			dump_feat_select(estimator.named_steps['feat_select'], filename="feat%d.txt" % self.counter)
+
 		self.counter += 1
 		return accuracy_score(y.flatten(), pred_y.flatten())
 
 	def rscorer(self, estimator, X, y):
-		"""to do: get key in estimator to feat_select and dump"""
+		"""to do: get key in estimator to feat_select and dump
+ie "feat_select" in vars(estimator.byname)
+		"""
 		pred_y = estimator.predict(X)
+		self.get_weights = lambda x: x.named_steps['regressor'].coef_
 		pred_y[pred_y > 1] = 1
 		pred_y[pred_y < 0] = 0
 		t_pred_y = self.scaler.inverse_transform(pred_y.reshape(-1, 1))
-		t_y = self.scaler.inverse_transform(y.reshape(-1, 1))
+		t_y = self.scaler.inverse_trannsform(y.reshape(-1, 1))
 		dump_prediction(t_pred_y.flatten(), t_y.flatten(), filename="out%d.txt" % self.counter)
 		dump_weights(self.get_weights(estimator), filename="weights%d.txt" % self.counter)
+		if 'feat_select' in estimator.named_steps:
+			dump_feat_select(estimator.named_steps['feat_select'], filename="feat%d.txt" % self.counter)
 		self.counter += 1
 		return -1 * mean_absolute_error(t_y.flatten(), t_pred_y.flatten())
+
 	def mscorer(self, estimator, X, y):
 		pred_y = estimator.predict(X)
 		onehot_labels = self.data # I -> bin
+		pred_age = []
+		actual_age = self.scaler.inverse_transform(pred_y.reshape(-1, 1)).flatten()
+		for pred in pred_y:
+			age = np.mean(onehot_labels[np.argmax(pred)])
+			pred_age.append(age)
+		dump_prediction(pred_age, actual_age, filename="out%d.txt" % self.counter)
+		dump_weights(self.get_weights(estimator), filename="weights%d.txt" % self.counter)
+		if 'feat_select' in estimator.named_steps:
+			dump_feat_select(estimator.named_steps['feat_select'], filename="feat%d.txt" % self.counter)
+		self.counter += 1
+		return -1 * mean_absolute_error(actual_age, pred_age)
 
 	def multiclass_onehot(self, L):
 		bins = [Loader._age_bin() for age in self.scaler.inverse_transform(L).flatten()]
