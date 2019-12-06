@@ -29,7 +29,29 @@ class Binner:
 	def get_bin(self, chrom, position):
 		off = position // self.bin_size
 		return self.offset[chrom] + off
-
+	def featurize_bed(self, opened_bed_file, col=7):
+		"""order:
+		chrom  start    end      size   num_data  min   max     mean   sum
+		"""
+		arr = np.zeros((self.total_n_bins, ))
+		last_chr = ''
+		last_end = '0'
+		idx = 0
+		for rline in opened_bed_file:
+			line = rline.strip().split()
+			if last_chr == '':
+				assert line[3] == "%d" % self.bin_size
+			if line[0] == last_chr and last_end == line[1]:
+				idx += 1
+			elif line[0] in self.chrom_sizes.keys():
+				idx = self.get_bin(line[0], (int(line[1]) + int(line[2])) // 2)
+			else:
+				continue
+			if line[col] != 'NA' and idx < len(arr):
+				arr[idx] = float(line[col])
+			last_chr = line[0]
+			last_end = line[2]
+		return arr
 	def featurize(self, opened_file, keep=lambda x: True):
 		arr = np.zeros((self.total_n_bins, ))
 		for chrom, chrom_len in self.chrom_sizes.items():

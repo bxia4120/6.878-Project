@@ -66,7 +66,7 @@ class Loader:
 			if not os.path.exists(data_dir):
 				os.mkdir(data_dir)
 		out = []
-		for sample_data in self.metadata['datasets'][S]['browser']['peak_calls']:
+		for sample_data in self.metadata['datasets'][S]['browser']['signal_unstranded']:
 			bname = os.path.basename(sample_data['big_data_url'])
 			full_name = os.path.join(data_dir, bname)
 			if not os.path.exists(full_name):

@@ -6,9 +6,10 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import polynomial_kernel
 import os
 import pyBigWig
+import gzip
 
 class Data:
-	def __init__(self, marker_list, filename=None,
+	def __init__(self, marker_list=None, filename=None,
 				 bin_size=10000, metadata_file='metadata.json', # or {h3k27ac: ac_metadata.json, ...}
 				 chrom_sizes=None):
 		if filename:
@@ -46,7 +47,7 @@ class Data:
 		raw_feature_list = []
 		label_list = sorted([len(v_list) for lab, v_list in ldr.table.items()])
 		print("label list:", label_list)
-		min_val = label_list[len(label_list) * 4 // 5] # bottom 80%
+		min_val = label_list[len(label_list) * 3 // 5] # bottom 80%
 
 		print("min=", min_val)
 		for label, v_list in ldr.table.items():
@@ -57,14 +58,11 @@ class Data:
 					file_list = filename_dict[marker]
 					filename = file_list[0]	 # TODO: can we use multiple?
 					print("fname:", filename)
-					try:
-						bw = pyBigWig.open(filename)
-						F = bnr.featurize(bw)
-						bw.close()
-						datum.append(F)
-					except Exception as e:
-						print("bad fname:", filename, ":", e)
-						pass
+					actual_filename = filename.replace('.bigWig', '.10000.bed.gz')
+					if os.path.isfile("%s.done" % actual_filename):
+						with gzip.open(actual_filename, 'rt') as F:
+							F = bnr.featurize_bed(F)
+							datum.append(F)
 				if len(datum) == len(marker_list):
 					raw_feature_list.append(datum)
 					raw_label_list.append(actual_age_list)
