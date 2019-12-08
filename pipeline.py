@@ -22,7 +22,7 @@ def reshape_data(model_data, op=np.add):
 								   model_data.shape[2]))
 	return op(*[model_data[:, i, :] for i in range(n_markers)])
 
-def run(model_data, crossval=10, n_feat=1000, mode="r"):
+def run(model_data, crossval=10, n_feat=1000, mode="r", kernel=None):
 	print("Data:", model_data.feature_list.shape)
 	print("Labels:", model_data.label_list.flatten().shape)
 	mod_list = []
@@ -57,6 +57,10 @@ def run(model_data, crossval=10, n_feat=1000, mode="r"):
 
 		print("Mode \"%s\" not implemented" % mode)
 		sys.exit(1)
+	if kernel and kernel > 0 and n_feat > 1:
+		# need feature selection if poly kernel is feasible
+		pk = PolynomialFeatures(degree=kernel)
+		mod_list.append(("poly", pk))
 	model = Pipeline(mod_list)
 	scores = cross_val_score(model, reshape_data(model_data.feature_list),
 							 Lab, cv=crossval,
@@ -87,4 +91,4 @@ if __name__ == "__main__":
 					balance=args['balance'],
 					marker_list=args['marker'])
 		data.dump("data.pickle")
-	run(data, mode=args['type'], n_feat=args['num_feat'])
+	run(data, mode=args['type'], n_feat=args['num_feat'], kernel=args['kernel'])

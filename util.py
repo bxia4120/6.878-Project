@@ -21,6 +21,7 @@ def get_args():
 	parser.add_argument('-n', '--num-feat', nargs='?', type=int, default=-1)
 	parser.add_argument('-j', '--json', nargs='?', type=file_type, default=None)
 	parser.add_argument('-d', '--data', nargs='?', type=dir_type, default=None)
+	parser.add_argument('-k', '--kernel', nargs='?', type=int)
 	args = vars(parser.parse_args())
 	if args['type'] in ['regr', 'regression', 'regress']:
 		args['type'] = "r"

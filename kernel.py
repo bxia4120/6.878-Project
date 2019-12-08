@@ -23,13 +23,18 @@ def dump_prediction(Pred, Label, filename="out.txt"):
 	with open(filename, 'w') as F:
 		for p, l in zip(Pred, Label):
 			print(p, l, file=F)
+
 def dump_weights(coef_list, filename):
 	with open(filename, 'w') as F:
 		for p in coef_list:
-			print(p, file=F)
-def dump_feat_select(kbest, filename):
+			if type(p) is np.ndarray or type(p) is list:
+				print(' '.join(list(map(str, p))), file=F)
+			else:
+				print(p, file=F)
+
+def dump_feat_select(kbest, filename, indices=False):
 	with open(filename, 'w') as F:
-		for s in kbest.get_support(True):
+		for s in kbest.get_support(indices):
 			print(s, file=F)
 
 def dump_model(model, filename):
