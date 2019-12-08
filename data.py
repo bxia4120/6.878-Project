@@ -11,6 +11,7 @@ import gzip
 class Data:
 	def __init__(self, marker_list=None, filename=None,
 				 balance=np.max,
+				 data_dir=None,
 				 bin_size=10000, metadata_file='metadata.json', # or {h3k27ac: ac_metadata.json, ...}
 				 chrom_sizes=None):
 		self.balance = balance
@@ -29,7 +30,7 @@ class Data:
 				raise ValueError("chrom size table not passed")
 			if not os.path.isfile(metadata_file):
 				raise ValueError("%s is not a file" % metadata_file)
-			self.feature_list, self.label_list, self.scaler = self._get_data(bin_size, metadata_file, marker_list, chrom_sizes)
+			self.feature_list, self.label_list, self.scaler = self._get_data(bin_size, metadata_file, marker_list, chrom_sizes, data_dir)
 			self.chrom_sizes = chrom_sizes
 			self.bin_size = bin_size
 		else:
@@ -60,8 +61,10 @@ class Data:
 		self.label_list = self.label_list[indices,]
 		self.feature_list = self.feature_list[indices,]
 
-	def _get_data(self, bin_size, metadata_file, marker_list, chrom_sizes):
-		ldr = Loader(metadata_file, marker_list)
+	def _get_data(self, bin_size, metadata_file, marker_list, chrom_sizes, data_dir):
+		if not data_dir:
+			data_dir = os.getcwd()
+		ldr = Loader(metadata_file, marker_list, data_dir)
 		bnr = Binner(chrom_sizes, bin_size)
 		raw_label_list = []
 		raw_feature_list = []
@@ -77,12 +80,14 @@ class Data:
 				for marker in marker_list:
 					file_list = filename_dict[marker]
 					filename = file_list[0]	 # TODO: can we use multiple?
-					print("fname:", filename)
-					actual_filename = filename.replace('.bigWig', '.10000.bed.gz')
-					if os.path.isfile("%s.done" % actual_filename):
-						with gzip.open(actual_filename, 'rt') as F:
-							F = bnr.featurize_bed(F)
-							datum.append(F)
+					print("filename:", filename)
+					try:
+						bw = pyBigWig.open(filename)
+						F = bnr.featurize(bw)
+						datum.append(F)
+						filename.close()
+					except Exception as e:
+						pass
 				if len(datum) == len(marker_list):
 					raw_feature_list.append(datum)
 					raw_label_list.append(actual_age_list)

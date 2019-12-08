@@ -5,13 +5,13 @@ import re
 
 class Loader:
 	"""version 2"""
-	def __init__(self, metadata_file, marker_list, bin_size=5):
+	def __init__(self, metadata_file, marker_list, data_dir=".", bin_size=5):
 		with open(metadata_file, 'r') as MF:
 			self.metadata = json.load(MF)
 		self.marker_list = marker_list
 		self.table = {}
 		self.bin_size = bin_size
-
+		self.data_dir = data_dir
 		healthy_synonyms = ['none', 'normal', 'healthy', 'presumed_normal']
 		for sample_id, sample_info in self.metadata['samples'].items():
 			if sample_info.get('disease', 'absent').lower() in healthy_synonyms:
@@ -64,14 +64,14 @@ class Loader:
 		data_dir_paths = [data_dict['cell_type_category'].replace(' ', '_'),
 						  data_dict['cell_type'].replace(' ', '_'),
 						  data_dict['assay']]
-		data_dir = ""
+		data_dir = self.data_dir
 		for dname in data_dir_paths:
 			data_dir = os.path.join(data_dir, dname)
 			if not os.path.exists(data_dir):
 				os.mkdir(data_dir)
 		out = []
-#		for sample_data in self.metadata['datasets'][S]['browser']["peak_calls"]:
-		for sample_data in self.metadata['datasets'][S]['browser']['signal_unstranded']:
+		for sample_data in self.metadata['datasets'][S]['browser']["peak_calls"]:
+#		for sample_data in self.metadata['datasets'][S]['browser']['signal_unstranded']:
 			bname = os.path.basename(sample_data['big_data_url'])
 			full_name = os.path.join(data_dir, bname)
 			if not os.path.exists(full_name):

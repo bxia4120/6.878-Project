@@ -32,8 +32,8 @@ def run(model_data, crossval=10, n_feat=1000, mode="r"):
 		Lab[Lab >= 0.5] = 1
 		Lab[Lab <  0.5] = 0
 		scorer = Unscaler(model_data.scaler,
-						  get_weights(lambda x: x.named_steps['classifer'].coef).cscaler
-		)
+						  get_weights=lambda x: x.named_steps['classifier'].coef_).cscorer
+
 		if n_feat > 0:
 			mod_list.append(("feat_select", SelectKBest(f_classif, k=n_feat)))
 		mod_list.append(("classifier", LogisticRegression()))
@@ -45,12 +45,14 @@ def run(model_data, crossval=10, n_feat=1000, mode="r"):
 		mod_list.append(("regressor", LinearRegression()))
 	elif mode == 'm':
 		Lab, onehot_labels = Unscaler(model_data.scaler).multiclass_onehot(model_data.label_list)
+		print(Lab.shape)
 		scorer = Unscaler(model_data.scaler,
-						  get_weights=lambda x: x.named_steps['multiclass'].coef_n,
-						  data=onehot_labels).mscorer
+						  get_weights=lambda x: x.named_steps['multiclass'].coef_,
+						  data=onehot_labels,
+						  ).mscorer
 		if n_feat > 0:
 			mod_list.append(("feat_select", SelectKBest(f_regression, k=n_feat)))
-		mod_list.append(("multiclass", LogisticRegression()))
+		mod_list.append(("multiclass", LogisticRegression(multi_class='multinomial', solver='newton-cg')))
 	else:
 
 		print("Mode \"%s\" not implemented" % mode)
@@ -68,8 +70,10 @@ def run(model_data, crossval=10, n_feat=1000, mode="r"):
 
 if __name__ == "__main__":
 	args = get_args()
-
+	print("wd:", os.getcwd())
+	print("sys.args:", sys.argv[1:])
 	chrom_sizes={"chr1": 249250621, "chr10": 135534747, "chr11": 135006516, "chr12": 133851895, "chr13": 115169878, "chr14": 107349540, "chr15": 102531392, "chr16": 90354753, "chr17": 81195210, "chr18": 78077248, "chr19": 59128983, "chr2": 243199373, "chr20": 63025520, "chr21": 48129895, "chr22": 51304566, "chr3": 198022430, "chr4": 191154276, "chr5": 180915260, "chr6": 171115067, "chr7": 159138663, "chr8": 146364022, "chr9": 141213431}
+	print("Args:", args)
 	if args['pickle']:
 		data = Data(filename=args['pickle'],
 					chrom_sizes=chrom_sizes,
@@ -77,6 +81,7 @@ if __name__ == "__main__":
 					balance=args['balance'])
 	else:
 		data = Data(bin_size=10000,
+					data_dir=args['data'],
 					chrom_sizes=chrom_sizes,
 					metadata_file=args['json'],
 					balance=args['balance'],
