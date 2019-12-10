@@ -39,8 +39,8 @@ class Binner:
 
 
 if __name__ == "__main__":
-	chrom_sizes = json.load(open('chrom_sizes.json'))
-	bnr = Binner({'chr2': 100000}, 10000)
+	chrom_sizes = json.load(open("chrom_sizes.json"))
+	bnr = Binner(chrom_sizes, 10000)
 	for filename in glob.glob('data/*'):
 		try:
 			file = pyBigWig.open(filename)

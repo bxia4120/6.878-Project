@@ -19,7 +19,7 @@ class Loader:
 				if not age:
 					continue
 				age_bin = self.get_age_bin(np.mean(age))
-				f_name_list = self.get_filename(sample_id)
+				f_name_list = self.download_filename(sample_id)
 				if not f_name_list:
 					continue
 				for f_name in f_name_list:
@@ -44,7 +44,7 @@ class Loader:
 			return None
 		return list(map(int, R))
 
-	def get_filename(self, sample_id):
+	def download_filename(self, sample_id):
 		S = sample_id + "_" + self.marker
 		if not os.path.exists(self.data_dir):
 			os.mkdir(self.data_dir)
