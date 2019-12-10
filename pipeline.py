@@ -1,28 +1,37 @@
 #!/usr/bin/env python3
 import sys, os
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from sklearn.linear_model import ElasticNet, LinearRegression, SGDRegressor, LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectKBest, f_regression, f_classif
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from sklearn.svm import SVR
+from sklearn.neural_network import MLPRegressor
 from data import Data
 from kernel import PolyKernel, Unscaler
 import numpy as np
 from util import *
+from matplotlib import rc
+rc('text', usetex=True)
 
 np.seterr(divide='ignore', invalid='ignore')
 
+#best_indices=[972,148873,149616,94280,114623]
+best_indices = []
 def reshape_data(model_data, op=np.add):
 	n_markers = model_data.shape[1]
 	if n_markers == 1:
-		return model_data.reshape((model_data.shape[0],
-								   model_data.shape[2]))
+		M = model_data.reshape((model_data.shape[0],
+								model_data.shape[2]))
+		if len(best_indices) > 0:
+			return M[:,best_indices]
+		return M
 	return op(*[model_data[:, i, :] for i in range(n_markers)])
 
-def run(model_data, crossval=10, n_feat=1000, mode="r", kernel=None):
+def run(model_data, crossval=3, n_feat=1000, mode="r", kernel=None, model_type="lr", extra=None):
 	print("Data:", model_data.feature_list.shape)
 	print("Labels:", model_data.label_list.flatten().shape)
 	mod_list = []
@@ -38,11 +47,36 @@ def run(model_data, crossval=10, n_feat=1000, mode="r", kernel=None):
 			mod_list.append(("feat_select", SelectKBest(f_classif, k=n_feat)))
 		mod_list.append(("classifier", LogisticRegression()))
 	elif mode == "r":
-		scorer = Unscaler(model_data.scaler,
-						  get_weights=lambda x: x.named_steps['multiclass'].coef_).rscorer
+		gw = None
 		if n_feat > 0:
 			mod_list.append(("feat_select", SelectKBest(f_regression, k=n_feat)))
-		mod_list.append(("regressor", LinearRegression()))
+		if model_type == "lr":
+			mod_list.append(("regressor", LinearRegression()))
+			gw = lambda x: x.named_steps['regressor'].coef_
+		elif model_type == 'svm':
+			degree = 3
+			if extra:
+				degree = extra
+			mod_list.append(("regressor", SVR(kernel='poly', degree=degree)))
+			gw = lambda x: x.named_steps['regressor'].dual_coef_
+		elif model_type == 'mlp':
+			size = 10
+			if extra:
+				size = extra
+			mod_list.append(("regressor", MLPRegressor(hidden_layer_sizes=(size,))))
+			gw = lambda x: x.named_steps['regressor'].coefs_
+		elif model_type == 'rf':
+			num = 100
+			if extra:
+				num = extra
+			mod_list.append(("regressor", RandomForestRegressor(n_estimators=num)))
+			gw = lambda x: [[0.123456789]]
+		else:
+			print("Bad model type", model_type)
+			sys.exit(1)
+		scorer = Unscaler(model_data.scaler,
+						  get_weights=gw).rscorer
+
 	elif mode == 'm':
 		Lab, onehot_labels = Unscaler(model_data.scaler).multiclass_onehot(model_data.label_list)
 		print(Lab.shape)
@@ -63,7 +97,8 @@ def run(model_data, crossval=10, n_feat=1000, mode="r", kernel=None):
 		mod_list.append(("poly", pk))
 	model = Pipeline(mod_list)
 	scores = cross_val_score(model, reshape_data(model_data.feature_list),
-							 Lab, cv=crossval,
+							 Lab,
+							 cv=KFold(n_splits=crossval, shuffle=True),
 							 n_jobs=1,
 							 scoring=scorer)
 	out = np.asarray(scores)
@@ -91,4 +126,4 @@ if __name__ == "__main__":
 					balance=args['balance'],
 					marker_list=args['marker'])
 		data.dump("data.pickle")
-	run(data, mode=args['type'], n_feat=args['num_feat'], kernel=args['kernel'])
+	run(data, mode=args['type'], n_feat=args['num_feat'], kernel=args['kernel'], model_type=args['regressor'], extra=args['extra'])

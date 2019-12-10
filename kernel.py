@@ -70,7 +70,7 @@ class Unscaler(BaseEstimator, TransformerMixin):
 ie "feat_select" in vars(estimator.byname)
 		"""
 		pred_y = estimator.predict(X)
-		self.get_weights = lambda x: x.named_steps['regressor'].coef_
+#		self.get_weights = lambda x: x.named_steps['regressor'].coef_
 		pred_y[pred_y > 1] = 1
 		pred_y[pred_y < 0] = 0
 		t_pred_y = self.scaler.inverse_transform(pred_y.reshape(-1, 1))

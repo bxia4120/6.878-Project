@@ -34,12 +34,12 @@ def get_pairings(lab_list_list):
 	I = np.argsort(scores)[:min([len(v) for v in lab_list_list])]
 	return [indices[idx] for idx in I]
 
-def run(P, L, crossval=10):
+def run(P, L, crossval=3):
 	crossval = min(len(P), crossval)
 	scaler = MinMaxScaler()
 	Ld = [[l] for l in L]
 	L_t = scaler.fit_transform(Ld)
-	scorer = Unscaler(scaler, get_weights=lambda x: x.coef_).rscorer
+	scorer = Unscaler(scaler, get_weights=lambda x: x.named_steps['regressor'].coef_).rscorer
 	model = Pipeline([("regressor", LinearRegression())])
 	scores = cross_val_score(model,
 							 scaler.transform(P),

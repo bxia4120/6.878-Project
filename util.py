@@ -1,6 +1,7 @@
 import os, sys
 import argparse
 import numpy as np
+import re
 
 def file_type(x):
 	if os.path.isfile(x):
@@ -16,12 +17,14 @@ def get_args():
 	parser.add_argument('-p', '--pickle', nargs='?', type=file_type,
                         default=None)
 	parser.add_argument('-m', '--marker', nargs='+', type=str, default=[])
+	parser.add_argument('-r', '--regressor', nargs='?', type=str, default='lr')
 	parser.add_argument('-t', '--type', nargs="?", type=str, default='regression')
 	parser.add_argument('-b', '--balance', nargs='?', type=str, default="max")
 	parser.add_argument('-n', '--num-feat', nargs='?', type=int, default=-1)
 	parser.add_argument('-j', '--json', nargs='?', type=file_type, default=None)
 	parser.add_argument('-d', '--data', nargs='?', type=dir_type, default=None)
 	parser.add_argument('-k', '--kernel', nargs='?', type=int)
+	parser.add_argument('-x', '--extra', nargs='?', type=int)
 	args = vars(parser.parse_args())
 	if args['type'] in ['regr', 'regression', 'regress']:
 		args['type'] = "r"
@@ -36,6 +39,9 @@ def get_args():
 		args['balance'] = np.max
 	elif args['balance'] in ['min', 'minimum']:
 		args['balance'] = np.min
+	elif re.match(r'[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?', args['balance']):
+		f = float(args['balance'])
+		args['balance'] = lambda x: x[int(len(x) * f)]
 	else:
 		print("Balance must be either max or min")
 		sys.exit(1)

@@ -20,9 +20,11 @@ class Binner:
 			self.total_n_bins += n_bins
 
 	def unbin(self, num):
+		actual_num = num * self.bin_size
 		for chrom_name in self.chrom_list:
 			ofst = self.offset[chrom_name]
-			if num >= ofst and num < ofst + self.chrom_sizes[chrom_name]:
+			if num >= ofst and (num - ofst) < self.num_bins[chrom_name]:
+				print("true", chrom_name)
 				internal_bin = num - ofst
 				return (chrom_name, internal_bin * self.bin_size, (internal_bin + 1) * self.bin_size)
 		return None

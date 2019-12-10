@@ -51,7 +51,7 @@ class Data:
 		bal_counts = {b: 0 for b in set(bins)}
 		for b in bins:
 			bin_counts[b] += 1
-		cnt = self.balance(list(bin_counts.values()))
+		cnt = self.balance(sorted(list(bin_counts.values())))
 
 		indices = []
 		for i, b in enumerate(bins):
